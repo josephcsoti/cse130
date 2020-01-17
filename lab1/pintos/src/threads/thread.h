@@ -92,6 +92,9 @@ struct thread {
     /* Shared between thread.c and sempahore.c. */
     struct list_elem elem; /* List element. */
 
+    /* Keep track of wakeup time*/
+    int64_t time_to_wake;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir; /* Page directory. */

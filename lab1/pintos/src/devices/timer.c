@@ -1,3 +1,13 @@
+/*
+  Joseph Csoti
+  CSE 130 (Winter 2020)
+
+  Resources Used:
+  https://web.stanford.edu/class/cs140/projects/pintos/pintos_6.html
+
+*/
+
+
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -29,6 +39,9 @@ static void busy_wait (int64_t loops); extern char *rguid;
 static intr_handler_func timer_interrupt;
 static void real_time_delay (int64_t num, int32_t denom);
 static void real_time_sleep (int64_t num, int32_t denom);
+
+// define our function
+void compare_times(struct thread *t, void *aux);
 
 /* 
  * Sets up the timer to interrupt TIMER_FREQ times per second,
@@ -99,11 +112,26 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  // Get the current thread
+  struct thread *t = thread_current();
+  
+  // Calc time to wake up
+  int64_t time_to_wake = timer_ticks() + ticks;
+
+  // Store time in thread
+  t->time_to_wake = time_to_wake;
+
+  // Disable interrupts
+  intr_disable();
+
+  // Block the cuurent thread
+  // This function must be called with interrupts turned off.  
+  thread_block();
+
+  // Enable interrupts again
+  intr_enable();
+
 }
 
 /* 
@@ -198,6 +226,24 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  
+  // Create pointer for func
+  thread_action_func *func = compare_times;
+
+  // For each thread, check if need to be woken up
+  thread_foreach(func, NULL);
+}
+
+/*
+ * Function to compare current time with time_to_wake
+ */
+void compare_times(struct thread *t, void *aux) {
+  // Thread is sleeping and needs to be woken
+  if(t->status == THREAD_BLOCKED &&
+    ticks >= t->time_to_wake) {
+    thread_unblock(t); //unblock
+  }
+  else return;
 }
 
 /* 
