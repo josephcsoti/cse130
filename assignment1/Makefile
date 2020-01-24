@@ -7,13 +7,17 @@
 #
 #######################################################################
 
+include Makefile.libs  
+
 CFLAGS = -Wall
 CC = gcc -g
 
 SRC=$(wildcard *.c)
 
 sort: $(SRC) merge.a
-	$(CC) -o $@ $^ $(CFLAGS) merge.a 2>&1 | tee make.out
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS) merge.a 2>&1 | tee make.out
+
+check: grade
 
 grade: clean sort
 	@./grade.sh 
@@ -23,4 +27,4 @@ clean:
 
 submit: clean
 	@tar czvf ~/CSE130-Assignment1.tar.gz \
-	--exclude=merge.h --exclude=Makefile *.c *.h 
+	--exclude=merge.h --exclude=Makefile *.c *.h Makefile.libs
