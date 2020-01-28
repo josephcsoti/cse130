@@ -31,6 +31,7 @@ void singleProcessMergeSort(int arr[], int left, int right)
 void multiProcessMergeSort(int arr[], int left, int right) 
 {
 
+  // End if bounds overlap
   if (left >= right) return;
 
   // define a midpoint
@@ -40,46 +41,33 @@ void multiProcessMergeSort(int arr[], int left, int right)
   key_t key = ftok("jcsoti", 481516);
 
   // create shared memory key
-  int sm_size = right + 1;
-  int sm_key = shmget(key, sm_size*sizeof(int), IPC_CREAT);
-
-  printf("created sm of size %d \n", sm_size);
+  int sm_size = right + 1; // get rid of over lap
+  int sm_key = shmget(key, sm_size*sizeof(int), 0666|IPC_CREAT);
 
   // attach to shared memory
-  void *shared_mem = (int*)shmat(sm_key, 0, 0);
-  
-  printf("attached to sm \n");
+  int *shared_mem = ((int*) shmat(sm_key, 0, 0));
 
   // copy right side of local memory into shared memory
   // Source [1] [2]
-  printf("size:%d\n", sm_size);
-
   memcpy(shared_mem, arr, sizeof(int) * sm_size); // local -> shared
-
-  printf("copied to sm w/ size %d \n", sm_size);
 
   // fork
   pid_t child = fork();
 
-  printf("forked \n");
-
   // Source [0]
   // Process is a parent
-  if(child != 0){
-
-    printf("p is parent \n");
+  if(child > 0){
 
     // sort left side of local memory
-    ////multiProcessMergeSort(arr, left, mid);
-    singleProcessMergeSort(arr, left, mid)
+    singleProcessMergeSort(arr, left, mid);
 
     //wait for child to finish?
     wait(0);
 
     //copy shared memory to right side of local memory
     int dest_size = right - mid;
-    int dest_start = mid;
-    memcpy(arr+dest_start, shared_mem, sizeof(int) * dest_size); // shared -> local
+    int dest_start = mid + 1;
+    memcpy(&(arr[dest_start]), &(shared_mem[dest_start]), sizeof(int) * dest_size); // shared -> local
     
     // detach from shared memory
     shmdt(shared_mem);
@@ -93,24 +81,20 @@ void multiProcessMergeSort(int arr[], int left, int right)
   // Proccess is a child
   else if(child == 0){
 
-    printf("p is child \n");
-
     // attach to shared memory
     shared_mem = shmat(sm_key, 0, 0);
 
     //sort shared memory
-    /////multiProcessMergeSort(shared_mem, left, right);
+    singleProcessMergeSort(shared_mem, mid+1, right);
 
     // detach from shared memory
     shmdt(shared_mem);
 
-    return;
+    _exit(0);
   }
   // Error ???
   else {
-
-    printf("p is error?");
-
+    printf("Error with fork");
     return;
   }
 
