@@ -1,1 +1,7 @@
 .pintos/
+*.o
+*.d
+*.bin
+*.errors
+*.output
+*.result
