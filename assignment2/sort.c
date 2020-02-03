@@ -14,6 +14,7 @@ struct Data {
 
 void* mt_mergesort(void* data);
 void merge_h(int arr[], int left, int right);
+pthread_t threads[4];
 
 /* LEFT index and RIGHT index of the sub-array of ARR[] to be sorted */
 void singleThreadedMergeSort(int arr[], int left, int right) {
@@ -36,8 +37,7 @@ void multiThreadedMergeSort(int arr[], int left, int right) {
 
   // printf("Arr was %d, so threads=%d and seg_size:%d\n", len, threads_to_use, segment_size);
 
-  // Allocate space to hold threads
-  pthread_t threads[threads_to_use];
+  // Allocate space to hold data
   struct Data data[threads_to_use];
 
   // Create apporriate number of threads
@@ -55,11 +55,7 @@ void multiThreadedMergeSort(int arr[], int left, int right) {
   }
 
   // Merge the halves
-
-  int mid = (left+right) / 2;
-  merge_h(arr, left, mid);   // left-left & left-right
-  merge_h(arr, mid+1, right);   // right-left & right-right
-  merge_h(arr, left, right); // left and right
+  merge_h(arr, 0, right);
 
   return;
 }
@@ -82,6 +78,18 @@ void* mt_mergesort(void* data) {
   // printf("mt_mergesort: start-%d end-%d\n", segment_start, segment_end);
 
   singleThreadedMergeSort(arr, segment_start, segment_end);
+
+
+  if(t_id == 0){
+    // wait for 2
+    pthread_join(threads[1], NULL);
+    merge_h(arr, 0, segment_start + 2*segment_size - 1);
+  } 
+  else if(t_id == 2){
+    // wait for 4
+    pthread_join(threads[3], NULL);
+    merge_h(arr, segment_start, segment_start + 2*segment_size - 1);
+  }
 
   return 0;
 }
