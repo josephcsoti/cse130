@@ -106,6 +106,9 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
+/* Declare helpers here */
+bool compare_priority_func(const struct list_elem *a, const struct list_elem *b, void *aux);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -283,7 +286,11 @@ thread_unblock(struct thread *t)
 
     old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
-    list_push_back(&ready_list, &t->elem);
+
+    // Insert the new T into the right place, rather than just appending to the back
+    //// list_push_back(&ready_list, &t->elem);
+    list_insert_ordered(&ready_list, &t->elem, &compare_priority_func, NULL);
+
     t->status = THREAD_READY;
     intr_set_level(old_level);
 }
@@ -353,8 +360,13 @@ thread_yield(void)
     ASSERT(!intr_context());
 
     old_level = intr_disable();
-    if (cur != idle_thread)
-        list_push_back(&ready_list, &cur->elem);
+    
+    if (cur != idle_thread) {
+        // Insert the new T into the right place, rather than just appending to the back
+        ////list_push_back(&ready_list, &cur->elem);
+        list_insert_ordered(&ready_list, &cur->elem, &compare_priority_func, NULL);
+    }
+
     cur->status = THREAD_READY;
     schedule();
     intr_set_level(old_level);
@@ -505,7 +517,14 @@ init_thread(struct thread *t, const char *name, int priority)
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
     t->magic = THREAD_MAGIC;
-    list_push_back(&all_list, &t->allelem);
+
+    enum intr_level old_level = intr_disable();
+
+    // Insert the new T into the right place, rather than just appending to the back
+    ////list_push_back(&all_list, &t->allelem); 
+    list_insert_ordered(&all_list, &t->allelem, &compare_priority_func, NULL);
+
+    intr_set_level (old_level);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -617,6 +636,19 @@ allocate_tid(void)
     lock_release(&tid_lock);
 
     return tid;
+}
+
+/* Helpers */
+
+/* Compare Thread A vs. Thread B in priority level*/
+bool compare_priority_func(const struct list_elem *a, const struct list_elem *b, void *aux) {
+  
+  // Get values
+  int a_priority = list_entry(a, struct thread, elem)->priority;
+  int b_priority = list_entry(b, struct thread, elem)->priority;
+  
+  // is A > B?
+  return a_priority > b_priority;
 }
 
 /* Offset of `stack' member within `struct thread'.
