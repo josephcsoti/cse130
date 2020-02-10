@@ -392,7 +392,26 @@ thread_foreach(thread_action_func *func, void *aux)
 void
 thread_set_priority(int new_priority)
 {
-    thread_current()->priority = new_priority;
+    ////thread_current()->priority = new_priority;
+
+    enum intr_level old_level = intr_disable();
+
+    // update the priority
+    struct thread *t_current = thread_current();
+    t_current->priority = new_priority;
+
+    // safety check
+    if (!list_empty (&ready_list)) {
+        // Get the head which should have the HIGHEST p
+        struct thread *t_highest = list_entry(list_begin(&ready_list), struct thread, elem);
+        
+        // If the largest p is still higher than our new p, then pause the current thread
+        if (t_highest->priority > new_priority) {
+            thread_yield();
+        }
+    }
+
+    intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */
