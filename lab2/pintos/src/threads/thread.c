@@ -247,6 +247,9 @@ thread_create(const char *name, int priority,
     /* Add to run queue. */
     thread_unblock(t);
 
+    // Check if new thread has a higher p then the current thread's p
+    if (thread_get_priority() < priority) thread_yield();
+
     return tid;
 }
 
@@ -400,15 +403,12 @@ thread_set_priority(int new_priority)
     struct thread *t_current = thread_current();
     t_current->priority = new_priority;
 
-    // safety check
     if (!list_empty (&ready_list)) {
         // Get the head which should have the HIGHEST p
         struct thread *t_highest = list_entry(list_begin(&ready_list), struct thread, elem);
         
         // If the largest p is still higher than our new p, then pause the current thread
-        if (t_highest->priority > new_priority) {
-            thread_yield();
-        }
+        if (t_highest->priority > new_priority) thread_yield();
     }
 
     intr_set_level (old_level);
