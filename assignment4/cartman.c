@@ -20,7 +20,6 @@ void depart(unsigned int cart, enum track track, enum junction junction)
  */
 void cartman() 
 {
-  // Remove, only here to fail code warning test
-  int foo = 1024;
+ // implent here
 }
 
