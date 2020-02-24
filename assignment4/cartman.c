@@ -53,7 +53,7 @@ void depart(unsigned int cart, enum track track, enum junction junction)
   // find its sister junction
   enum junction sister_junc = sister_junction(track, junction);
 
-  printf("Cart %d: finished! releaseing %d and %d...\n", cart, junction, sister_junc);
+  //printf("Cart %d: departing! releaseing %d and %d...\n", cart, junction, sister_junc);
 
   // Release both juncs
   release(cart, junction);
@@ -66,6 +66,8 @@ void depart(unsigned int cart, enum track track, enum junction junction)
   // Signal only ONE thread that BOTH junctions are open
   pthread_cond_signal(&junction_cv[junction]);
   pthread_cond_signal(&junction_cv[sister_junc]);
+
+  //printf("Cart %d: released! %d and %d...\n", cart, junction, sister_junc);
 
   return;
 }
@@ -96,17 +98,17 @@ void* thread_arrive(void* data){
   enum track track = cd->track;
   enum junction junction = cd->junction;
 
-  printf(">> Cart %d: Arrived @ track:%d junc:%d\n", cart, track, junction);
+  //printf(">> Cart %d: Arrived @ track:%d junc:%d\n", cart, track, junction);
 
   // Find sister junction
   enum junction sister_junc = sister_junction(track, junction);
 
-  printf("Cart %d: Trying junc %d & %d\n", cart, junction, sister_junc);
+  //printf("Cart %d: Trying junc %d & %d\n", cart, junction, sister_junc);
 
   // Create lock for 1st junc
   pthread_mutex_lock(&mx);
 
-  printf("Cart %d: (1/2) Waiting on %d...\n", cart, junction);
+  //printf("Cart %d: (1/2) Waiting on %d...\n", cart, junction);
   
   // If taken, wait
   while(junctions[junction])
@@ -120,7 +122,7 @@ void* thread_arrive(void* data){
   // Create lock for 2nd junc
   pthread_mutex_lock(&mx_2);
 
-  printf("Cart %d: (2/2) Waiting on %d...\n", cart, sister_junc);
+  //printf("Cart %d: (2/2) Waiting on %d...\n", cart, sister_junc);
 
   // if taken, wait
   while(junctions[sister_junc])
@@ -132,7 +134,7 @@ void* thread_arrive(void* data){
   pthread_mutex_unlock(&mx_2);
 
   // Both junctions are free so reserve
-  printf("Cart %d: Both junctions free, reserving...\n", cart);
+  //printf("Cart %d: Both junctions free, reserving...\n", cart);
   reserve(cart, junction);
   reserve(cart, sister_junc);
 
