@@ -59,6 +59,11 @@
 
 #include "threads/semaphore.h"
 
+#define MAX_ARGS 99 // Hopefully this is more than enough
+
+// Semaphore to keep threads n-sync
+struct semaphore sema_sync;
+
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip) (void), void **esp);
 
@@ -68,23 +73,75 @@ static bool load(const char *cmdline, void (**eip) (void), void **esp);
  * format binary has been loaded into the heap by load();
  */
 static void
-push_command(const char *cmdline UNUSED, void **esp)
-{
-    printf("Base Address: 0x%08x\n", (unsigned int) *esp);
+push_command(const char *cmdline, void **esp)
+{    
+    
+    // Hold token strings and token addys
+    char **tokens_found = (char **) malloc(MAX_ARGS * sizeof (char *));
+    char *token_addrs[MAX_ARGS];
 
-    // Word align with the stack pointer. 
-    *esp = (void*) ((unsigned int) (*esp) & 0xfffffffc);
+    char *token; // temp var to hold token
+    char *save_ptr; // Needed by strtok_r
 
-    // Some of your CSE130 Lab 3 code will go here.
-    //
-    // You'll be doing address arithmetic here and that's one of only a handful 
-    // of situations in which it is acceptable to have comments inside functions. 
-    //
-    // As you advance the stack pointer by adding fixed and variable offsets
-    // to it, add a SINGLE LINE comment to each logical block, a comment that 
-    // describes what you're doing, and why.
-    //       
-    // If nothing else, it'll remind you what you did when it doesn't work :)
+    int ith_token = 0;
+    token = strtok_r(cmdline, " ", &save_ptr);
+
+    // extract tokens
+    while (token != NULL) {
+        tokens_found[ith_token] = token;
+        //printf("token: %s\n", token);
+        token = strtok_r(NULL, " ", &save_ptr);
+        ith_token++;
+    }
+
+    int num_tokens = ith_token; // We now know the number of tokens
+    //printf("num_tokens: %d\n", num_tokens);
+    
+    // Since we have "tokens-1" args (1st is filename) set the last one to "0"
+    token_addrs[num_tokens] = 0;
+
+    // Store token addys into local array
+    for(int i = num_tokens-1; i >= 0; i--) {
+        *esp -= (strlen (tokens_found[i]) + 1);
+        token_addrs[i] = *esp;
+        memcpy (*esp, tokens_found[i], strlen(tokens_found[i]) + 1);
+        //printf("0x%x argv[%d][..] '%s'\n", *esp, i, tokens_found[i]);
+    }
+    
+    // Word align with the stack pointer.
+    *esp = (void *)((unsigned int)(*esp) & 0xfffffffc);
+    //printf("0x%x word-align %d\n", *esp, (unsigned int) 0);
+    
+    // End the thing
+    *esp -= 4;
+    *((void **)*esp) = (unsigned int) 0; // Weird thing that makes this work
+    //printf("0x%x argv[%d] %d\n", *esp, num_tokens, 0);
+
+    // Store the addy of each arguement/token into esp
+    for(int i = num_tokens-1; i >= 0; i--) {
+        *esp -= (sizeof (char *));
+        memcpy(*esp, &token_addrs[i], sizeof (char *));
+        //printf("0x%x argv[%d] 0x%x\n", *esp, i, addrs[i]);
+    }
+
+    // Addy of arguement array
+    char **argv_array_address = *esp;
+    *esp -= (sizeof (char **));
+    memcpy(*esp, &argv_array_address, sizeof (char **));
+    //printf("0x%x argv 0x%x\n", *esp, argv_array_address);
+
+    // num of args
+    *esp -= (sizeof (int));
+    memcpy(*esp, &num_tokens, sizeof (int));
+    //printf("0x%x argc %d\n", *esp, num_tokens);
+
+    // Fake return
+    *esp -= (sizeof (void *));
+    memcpy(*esp, &token_addrs[num_tokens], sizeof (void *));
+    //printf("0x%x fake return %d\n", *esp, addrs[num_tokens]);
+
+    // we done :)
+    return;
 }
     
 /*  
@@ -103,8 +160,17 @@ process_execute(const char *cmdline)
 
     strlcpy(cmdline_copy, cmdline, PGSIZE);
 
+
+    // extract filename for thread
+    char* save_ptr;
+    char* filename = strtok_r(cmdline, " ", &save_ptr);
+    
+    semaphore_init(&sema_sync, 0);
+
     // Create a Kernel Thread for the new process
-    tid_t tid = thread_create(cmdline, PRI_DEFAULT, start_process, cmdline_copy);
+    tid_t tid = thread_create(filename, PRI_DEFAULT, start_process, cmdline_copy);
+
+    semaphore_down(&sema_sync);
 
     // CSE130 Lab 3 : The "parent" thread immediately returns after creating 
     // the child. To get ANY of the tests passing, you need to synchronise the 
@@ -129,11 +195,32 @@ start_process(void *cmdline)
     pif.cs = SEL_UCSEG;
     pif.eflags = FLAG_IF | FLAG_MBS;
 
-    bool success = load(cmdline, &pif.eip, &pif.esp);
+    // Make a copy of CMDLINE to avoid a race condition between the caller and load() 
+    char *cmdline_copy = palloc_get_page(0);
+    if (cmdline_copy == NULL)
+        return TID_ERROR;
+
+    strlcpy(cmdline_copy, (char*) cmdline, PGSIZE);
+
+    // extract filename...
+    char* save_ptr;
+    char* filename = strtok_r(cmdline, " ", &save_ptr);
+
+    //printf("file: %s\n", filename);
+
+    // load file not arguments
+    bool success = load(filename, &pif.eip, &pif.esp);
+
     if (success) {
+        // push command copy (filename + args)
+        cmdline = cmdline_copy;
         push_command(cmdline, &pif.esp);
     }
+
     palloc_free_page(cmdline);
+
+    //printf("SEMA UPPPPPPPPPPPPPPPPP\n");
+    semaphore_up(&sema_sync);
 
     if (!success) {
         thread_exit();
@@ -157,7 +244,7 @@ start_process(void *cmdline)
    This function will be implemented in Lab 3.  
    For now, it does nothing. */
 int
-process_wait(tid_t child_tid UNUSED)
+process_wait(tid_t child_tid)
 {
     return -1;
 }
