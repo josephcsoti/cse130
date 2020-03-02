@@ -50,15 +50,23 @@
 #include "userprog/process.h"
 #include "userprog/umem.h"
 
+#include "threads/semaphore.h"
+
+// Semaphore to keep file system safe
+struct semaphore sema_filesys;
+
 static void syscall_handler(struct intr_frame *);
 
 static void write_handler(struct intr_frame *);
 static void exit_handler(struct intr_frame *);
+static void create_handler(struct intr_frame *);
+static void open_handler(struct intr_frame *);
 
 void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  semaphore_init(&sema_filesys, 0);
 }
 
 static void
@@ -85,6 +93,14 @@ syscall_handler(struct intr_frame *f)
       
   case SYS_WRITE: 
     write_handler(f);
+    break;
+
+  case SYS_CREATE:
+    create_handler(f);
+    break;
+
+  case SYS_OPEN:
+    open_handler(f);
     break;
 
   default:
@@ -139,5 +155,53 @@ static void write_handler(struct intr_frame *f)
     umem_read(f->esp + 12, &size, sizeof(size));
 
     f->eax = sys_write(fd, buffer, size);
+}
+
+static bool sys_create(const char *fname, int isize)
+{
+
+  if(!fname || !isize) sys_exit(-1);
+  if(isize < 0) sys_exit(-1);
+
+  semaphore_down(&sema_filesys);
+  bool status = filesys_create(fname, isize, false);
+  semaphore_up(&sema_filesys);
+
+  if(!status) sys_exit(-1);
+
+  return status;
+}
+
+static void create_handler(struct intr_frame *f)
+{
+  const char* fname;
+  int isize;
+
+  umem_read(f->esp + 4, &fname, sizeof(fname));
+  umem_read(f->esp + 8, &isize, sizeof(isize));
+
+  f->eax = sys_create(fname, isize);
+
+  sys_exit(0);
+}
+
+static struct file* sys_open(const char *fname)
+{
+  if(!fname) sys_exit(-1);
+
+  struct file* file = filesys_open(fname);
+
+  if(!file) sys_exit(-1);
+
+  return file;
+}
+
+static void open_handler(struct intr_frame *f)
+{
+  const char* fname;
+
+  umem_read(f->esp + 4, &fname, sizeof(fname));
+
+  f->eax = sys_open(fname);
 }
 
