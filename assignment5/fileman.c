@@ -83,7 +83,7 @@ int fileman_write(char *fname, size_t foffset, char *buf, size_t boffset, size_t
 	}
 
 	// Attempt to write
-	ssize_t wrote_size = write(file_desc, buf, size);
+	ssize_t wrote_size = write(file_desc, buf + boffset, size);
 
 	// ERROR: Something went wrong OR wrote wrong amount of data
 	if(wrote_size < 0 || size != wrote_size) {
