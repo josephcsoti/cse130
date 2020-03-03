@@ -34,8 +34,6 @@ int fileman_append(char *fname, char *buf, size_t size) {
  * You need to implement this function, see fileman.h for details 
  */
 int fileman_copy(char *fsrc, char *fdest) {
-	// Remove, only here to fail code warning test
-  	int foo = 1024;
 	return 0;
 }
 
