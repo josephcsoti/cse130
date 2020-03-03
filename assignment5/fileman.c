@@ -23,10 +23,16 @@ int fileman_read(char *fname, size_t foffset, char *buf, size_t boffset, size_t 
 	// ERROR: File does not exist
 	if(file_desc == -1) return -1;
 
-	//We can now attempt to read...
+	// Attempt to adjust the file offset
+	off_t file_offset = lseek(file_desc, foffset, SEEK_SET);
+
+	// ERROR: lseek
+	if(file_offset == -1) return -1;
+
+	// We can now attempt to read...
 	ssize_t read_size = read(file_desc, buf, size);
 
-	// Some sort of error
+	// ERROR: read
 	if(read_size < 0) return -1;
 
 	// Was able to read n > 0 bytes
