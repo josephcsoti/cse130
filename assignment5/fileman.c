@@ -30,7 +30,7 @@ int fileman_read(char *fname, size_t foffset, char *buf, size_t boffset, size_t 
 	if(file_offset == -1) return -1;
 
 	// We can now attempt to read...
-	ssize_t read_size = read(file_desc, buf, size);
+	ssize_t read_size = read(file_desc, buf + boffset, size);
 
 	// ERROR: read
 	if(read_size < 0) return -1;
