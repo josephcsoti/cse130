@@ -8,6 +8,8 @@
  ***********************************************************************/
 
 #include "fileman.h"
+
+#include <unistd.h>
 #include <fcntl.h>
 
 /*
@@ -21,7 +23,14 @@ int fileman_read(char *fname, size_t foffset, char *buf, size_t boffset, size_t 
 	// ERROR: File does not exist
 	if(file_desc == -1) return -1;
 
-	return 0;
+	//We can now attempt to read...
+	ssize_t read_size = read(file_desc, buf, size);
+
+	// Some sort of error
+	if(read_size < 0) return -1;
+
+	// Was able to read n > 0 bytes
+	return read_size;
 }
 
 /*
