@@ -11,6 +11,8 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /*
  * You need to implement this function, see fileman.h for details 
@@ -27,13 +29,22 @@ int fileman_read(char *fname, size_t foffset, char *buf, size_t boffset, size_t 
 	off_t file_offset = lseek(file_desc, foffset, SEEK_SET);
 
 	// ERROR: lseek
-	if(file_offset == -1) return -1;
+	if(file_offset == -1) {
+		close(file_desc);
+		return -1;
+	}
 
 	// We can now attempt to read...
 	ssize_t read_size = read(file_desc, buf + boffset, size);
 
 	// ERROR: read
-	if(read_size < 0) return -1;
+	if(read_size < 0) {
+		close(file_desc);
+		return -1;
+	}
+
+	// Close the file
+	close(file_desc);
 
 	// Was able to read n > 0 bytes
 	return read_size;
@@ -43,7 +54,33 @@ int fileman_read(char *fname, size_t foffset, char *buf, size_t boffset, size_t 
  * You need to implement this function, see fileman.h for details 
  */
 int fileman_write(char *fname, size_t foffset, char *buf, size_t boffset, size_t size) {
-	return 0;
+
+	// Obtain a file desc
+	int file_desc = open(fname, O_WRONLY);
+ 
+	// ERROR: File exisits already
+    if (file_desc != -1) {
+		close(file_desc); // Make sure to close the file
+		return -1;
+	}
+
+	// File doesnt exist so create a new file desc
+	file_desc = open(fname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IXUSR);
+
+	// Attempt to write
+	ssize_t wrote_size = write(file_desc, buf, size);
+
+	// ERROR: Something went wrong OR wrote wrong amount of data
+	if(wrote_size < 0 || size != wrote_size) {
+		close(file_desc); // Close file
+		return -1;
+	}
+
+	// Close file
+	close(file_desc);
+
+	// Wrote n bytes
+    return wrote_size;
 }
 
 /*
