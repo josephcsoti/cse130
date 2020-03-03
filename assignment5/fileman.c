@@ -8,11 +8,19 @@
  ***********************************************************************/
 
 #include "fileman.h"
+#include <fcntl.h>
 
 /*
  * You need to implement this function, see fileman.h for details 
  */
 int fileman_read(char *fname, size_t foffset, char *buf, size_t boffset, size_t size) {
+	
+	// Obtain a file desc
+	int file_desc = open(fname, O_RDONLY);
+
+	// ERROR: File does not exist
+	if(file_desc == -1) return -1;
+
 	return 0;
 }
 
