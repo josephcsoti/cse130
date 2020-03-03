@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 
 // For error stuff
 // #include <errno.h>
@@ -138,18 +139,22 @@ int fileman_append(char *fname, char *buf, size_t size) {
  */
 int fileman_copy(char *fsrc, char *fdest) {
 	
-	// Obtain a 2 file desc
-	int src_file_desc = open(fsrc, O_RDONLY);
-	int dest_file_desc = open(fdest, O_WRONLY);
- 
-	// ERROR: File couldnt be opedned or already exists
-    if (src_file_desc == -1 || dest_file_desc != -1) {
-		close(src_file_desc); // Make sure to close the file
-		close(dest_file_desc); // Make sure to close the file
-		return -1;
-	}
+	// Find data size of src file
+	struct stat src_stats;
+    int stats_r = stat(fsrc, &src_stats);
+    
+	// ERROR: Couldnt get stats
+	if(stats_r == -1) return -1;
 
-	return 0;
+	// Extract size + make new read buffer
+	int src_size = src_stats.st_size;
+	char* buf = malloc(src_size);
+
+	// Read -> Write
+	fileman_read(fsrc, 0, buf, 0, src_size);
+	fileman_write(fdest, 0, buf, 0, src_size);
+
+	return src_size;
 }
 
 /*
