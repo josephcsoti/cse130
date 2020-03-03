@@ -14,6 +14,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+// For error stuff
+// #include <errno.h>
+// #include <string.h>
+// #include <stdio.h>
+
 /*
  * You need to implement this function, see fileman.h for details 
  */
@@ -102,7 +107,30 @@ int fileman_write(char *fname, size_t foffset, char *buf, size_t boffset, size_t
  * You need to implement this function, see fileman.h for details 
  */
 int fileman_append(char *fname, char *buf, size_t size) {
-	return 0;
+	
+	// Obtain a file desc
+	int file_desc = open(fname, O_APPEND | O_WRONLY);
+ 
+	// ERROR: File does not exist
+    if (file_desc == -1) {
+		close(file_desc);
+		return -1;
+	}
+
+	// Attempt to append
+	ssize_t append_size = write(file_desc, buf, size);
+
+	// ERROR: Something went wrong OR wrote wrong amount of data
+	if(append_size < 0 || size != append_size) {
+		close(file_desc); // Close file
+		return -1;
+	}
+
+	// Close file
+	close(file_desc);
+
+	// Appended n bytes
+    return append_size;
 }
 
 /*
