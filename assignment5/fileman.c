@@ -67,6 +67,21 @@ int fileman_write(char *fname, size_t foffset, char *buf, size_t boffset, size_t
 	// File doesnt exist so create a new file desc
 	file_desc = open(fname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IXUSR);
 
+	// ERROR: File could not be created
+    if (file_desc == -1) {
+		close(file_desc); // Make sure to close the file
+		return -1;
+	}
+
+	// Attempt to adjust the file offset
+	off_t file_offset = lseek(file_desc, foffset, SEEK_SET);
+
+	// ERROR: lseek
+	if(file_offset == -1) {
+		close(file_desc);
+		return -1;
+	}
+
 	// Attempt to write
 	ssize_t wrote_size = write(file_desc, buf, size);
 
