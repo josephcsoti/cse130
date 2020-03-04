@@ -164,3 +164,10 @@ void fileman_dir(int fd, char *dname)
 {
 }
 
+/*
+ * You need to implement this function, see fileman.h for details 
+ */
+void fileman_tree(int fd, char *dname)
+{
+}
+

@@ -27,7 +27,7 @@ int fileman_read(char *fname, size_t foffset, char *buf, size_t boffset, size_t 
 int fileman_write(char *fname, size_t foffset, char *buf, size_t boffset, size_t size); 
 
 /*
- * Append SIZE bytes from BUF starting at BOFFSET to existing FILE.
+ * Append SIZE bytes from BUF to existing FILE.
  * 
  * RETURN number of bytes from BUFF appended to FNAME, -1 on error or if FILE 
  * does not exist
@@ -44,7 +44,33 @@ int fileman_copy(char *fsrc, char *fdest);
 
 /*
  * Print a hierachival directory view starting at DNAME to file descriptor FD as 
- * shown below where DNAME == 'data.dir'
+ * shown in an example below where DNAME == 'data.dir'
+ *
+ *   data.dir
+ *       blbcbuvjjko
+ *           lgvoz
+ *               jfwbv
+ *                   jqlbbb
+ *                   yfgwpvax
+ *           tcx
+ *               jbjfwbv
+ *                   demvlgq
+ *                   us
+ *               zss
+ *                   jfwbv
+ *                       ahfamnz
+ *       vkhqmgwsgd
+ *           agmugje
+ *               surxeb
+ *                   dyjxfseur
+ *                   wy
+ *           tcx
+ */
+void fileman_dir(int fd, char *dname); 
+
+/*
+ * Print a hierachival directory tree view starting at DNAME to file descriptor 
+ * FD as shown in an example below where DNAME == 'data.dir'
  *
  *   data.dir
  *   ├── blbcbuvjjko
@@ -61,16 +87,9 @@ int fileman_copy(char *fsrc, char *fdest);
  *   │               └── ahfamnz
  *   └── vkhqmgwsgd
  *       ├── agmugje
- *       │   ├── fwbv
- *       │   │   └── ttvlcaklt
  *       │   └── surxeb
  *       │       ├── dyjxfseur
  *       │       └── wy
  *       └── tcx
- *           └── jbjfwbv
- *               ├── nfjks
- *               └── rnixyjz
- * 
  */
-void fileman_dir(int fd, char *dname); 
-
+void fileman_tree(int fd, char *dname); 
