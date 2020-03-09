@@ -7,6 +7,18 @@
  *
  ***********************************************************************/
 
+/* ===============================
+ * Sources Used:
+ * https://classes.soe.ucsc.edu/cse130/Winter20/SECURE/print-ext-ascii.c
+ * https://stackoverflow.com/questions/27023697/c-scandir-only-fill-namelist-with-folders
+ * https://www.gnu.org/software/libc/manual/html_node/Simple-Directory-Lister.html
+ * https://www.gnu.org/software/libc/manual/html_node/Scanning-Directory-Content.html#Scanning-Directory-Content
+ * https://linux.die.net/man/3/scandir
+ * https://www.gnu.org/software/libc/manual/html_node/Directory-Entries.html
+ * http://codewiki.wikidot.com/system-calls
+ * https://www.ibm.com/support/knowledgecenter/SSLTBW_2.2.0/com.ibm.zos.v2r2.bpxbd00/rtlse.htm
+ * ================================*/
+
 #include "fileman.h"
 
 #include <unistd.h>
@@ -14,6 +26,22 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+// For file fd printing
+#include <stdio.h>
+#include <dirent.h>
+#include <stdio.h>
+#include <string.h>
+void fileman_dir_show(int fd, char *dname, int level_deep, bool fancy_char);
+void fileman_write_line(int fd, char *entry_name, int levels_deep, bool fancy_char, bool is_last);
+
+
+#define TAB "    "
+#define TEE "\u251C"
+#define HOR "\u2500"
+#define VER "\u2502"
+#define ELB "\u2514"
 
 // For error stuff
 // #include <errno.h>
@@ -162,6 +190,9 @@ int fileman_copy(char *fsrc, char *fdest) {
  */
 void fileman_dir(int fd, char *dname)
 {
+	// Print the top level directory
+	dprintf(fd, "%s\n", dname);
+	fileman_dir_show(fd, dname, 0, false);
 }
 
 /*
@@ -169,5 +200,54 @@ void fileman_dir(int fd, char *dname)
  */
 void fileman_tree(int fd, char *dname)
 {
+}
+
+void fileman_dir_show(int fd, char *dname, int levels_deep, bool fancy_char) {
+
+	// List to store
+	struct dirent **file_list;
+
+	// Change into data.dir
+	chdir(dname);
+
+	// Scan files in the CURRENT dir & alpha sort
+   	int num_items = scandir(".", &file_list, NULL, alphasort);
+    
+	// ERROR: something went wrong with items
+	if(num_items == -1) return;
+
+	// Loop through ach entry
+	for(int i=0; i<num_items; i++) {
+		struct dirent *entry = file_list[i];
+
+		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+
+		// Write the current line
+		fileman_write_line(fd, entry->d_name, levels_deep+1, fancy_char, (i == num_items - 1));
+
+		// File is actually a directory
+		if(entry->d_type == DT_DIR) {
+			fileman_dir_show(fd, entry->d_name, levels_deep+1, fancy_char);
+			chdir("..");
+		}
+	}
+
+	// Done
+	return;
+}
+
+void fileman_write_line(int fd, char *entry_name, int levels_deep, bool fancy_char, bool is_last) {
+
+	// First print the required number of spacing
+	for(int i=0; i<levels_deep; i++){
+		dprintf(fd, "%s", TAB);
+	}
+
+	// Add the entry name
+	dprintf(fd, "%s", entry_name);
+
+	// Finish with a newl ine
+	dprintf(fd, "\n");
+	
 }
 
