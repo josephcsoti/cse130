@@ -34,14 +34,20 @@
 #include <stdio.h>
 #include <string.h>
 void fileman_dir_show(int fd, char *dname, int level_deep, bool fancy_char);
-void fileman_write_line(int fd, char *entry_name, int levels_deep, bool fancy_char, bool is_last);
+void fileman_write_line(int fd, char *entry_name, int levels_deep, bool fancy_char, bool is_first, bool is_last);
 
 
 #define TAB "    "
-#define TEE "\u251C"
-#define HOR "\u2500"
-#define VER "\u2502"
-#define ELB "\u2514"
+#define SHORT_TAB "   "
+#define SPACE " "
+#define TEE "\u251C" // ├
+#define HOR "\u2500" // ─
+#define VER "\u2502" // |
+#define ELB "\u2514" // └
+
+#define V_TAB VER SHORT_TAB
+#define T_TAB TEE HOR HOR SPACE
+#define E_TAB ELB HOR HOR SPACE
 
 // For error stuff
 // #include <errno.h>
@@ -200,6 +206,9 @@ void fileman_dir(int fd, char *dname)
  */
 void fileman_tree(int fd, char *dname)
 {
+	// Print the top level directory
+	dprintf(fd, "%s\n", dname);
+	fileman_dir_show(fd, dname, 0, true);
 }
 
 void fileman_dir_show(int fd, char *dname, int levels_deep, bool fancy_char) {
@@ -217,13 +226,15 @@ void fileman_dir_show(int fd, char *dname, int levels_deep, bool fancy_char) {
 	if(num_items == -1) return;
 
 	// Loop through ach entry
+	bool is_first = true;
 	for(int i=0; i<num_items; i++) {
 		struct dirent *entry = file_list[i];
 
 		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
 
 		// Write the current line
-		fileman_write_line(fd, entry->d_name, levels_deep+1, fancy_char, (i == num_items - 1));
+		fileman_write_line(fd, entry->d_name, levels_deep+1, fancy_char, is_first, (i == num_items - 1));
+		is_first = false;
 
 		// File is actually a directory
 		if(entry->d_type == DT_DIR) {
@@ -236,11 +247,27 @@ void fileman_dir_show(int fd, char *dname, int levels_deep, bool fancy_char) {
 	return;
 }
 
-void fileman_write_line(int fd, char *entry_name, int levels_deep, bool fancy_char, bool is_last) {
+void fileman_write_line(int fd, char *entry_name, int levels_deep, bool fancy_char, bool is_first, bool is_last) {
 
 	// First print the required number of spacing
 	for(int i=0; i<levels_deep; i++){
-		dprintf(fd, "%s", TAB);
+		if(fancy_char){
+			// is the last thing to print
+			if(i == levels_deep-1){
+				if(is_last) dprintf(fd, "%s", E_TAB);
+				else dprintf(fd, "%s", T_TAB);
+			} else if(i==0){
+				if(is_first) dprintf(fd, "%s", V_TAB);
+				else if(is_last) dprintf(fd, "%s", TAB);
+				else dprintf(fd, "%s", V_TAB);
+			} else {
+				///
+			}
+			
+		}
+		else{
+			dprintf(fd, "%s", TAB);
+		}
 	}
 
 	// Add the entry name
